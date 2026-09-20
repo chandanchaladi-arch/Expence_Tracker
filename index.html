@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8A6A22">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chillara">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Chillara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+
+  --bg:#F2F0E9;
+  --surface:#FFFFFF;
+  --sunken:#E6E3D9;
+  --line:#D6D2C5;
+  --fg:#1B2420;
+  --muted:#6E7A74;
+  --brass:#8A6A22;
+  --brass-ink:#FFFFFF;
+  --key:#FFFFFF;
+  --key-press:#E6E3D9;
+
+  --c-food:#B9752A; --c-travel:#3D7FA3; --c-grocery:#5D8A3C; --c-bills:#7F5A96;
+  --c-shop:#C04A47; --c-health:#2A8C7D; --c-fun:#A8891F; --c-other:#6C7A75;
+
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101A18; --surface:#182523; --sunken:#0B1413; --line:#2A3B38;
+    --fg:#E9EFEB; --muted:#8CA09A; --brass:#D9B36A; --brass-ink:#14201E;
+    --key:#1E2D2A; --key-press:#2A3E3A;
+    --c-food:#E8A04B; --c-travel:#6FA8C9; --c-grocery:#8CB369; --c-bills:#B08BC4;
+    --c-shop:#E2716E; --c-health:#56BFAE; --c-fun:#E0C34E; --c-other:#93A29D;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101A18; --surface:#182523; --sunken:#0B1413; --line:#2A3B38;
+  --fg:#E9EFEB; --muted:#8CA09A; --brass:#D9B36A; --brass-ink:#14201E;
+  --key:#1E2D2A; --key-press:#2A3E3A;
+  --c-food:#E8A04B; --c-travel:#6FA8C9; --c-grocery:#8CB369; --c-bills:#B08BC4;
+  --c-shop:#E2716E; --c-health:#56BFAE; --c-fun:#E0C34E; --c-other:#93A29D;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{
+  height:100%;margin:0;background:var(--bg);color:var(--fg);
+  font-family:Archivo,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size:15px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;
+}
+button{font:inherit;color:inherit;background:none;border:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:6px}
+.num{font-family:"Instrument Serif",Georgia,"Times New Roman",serif;font-weight:400;letter-spacing:.01em}
+
+#app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+.view{flex:1;min-height:0;display:flex;flex-direction:column}
+.hidden{display:none !important}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;gap:10px;padding:12px 16px 6px}
+.wordmark{font-family:"Instrument Serif",Georgia,serif;font-size:21px;letter-spacing:.02em}
+.spacer{flex:1}
+.totalpill{
+  display:flex;align-items:baseline;gap:7px;padding:7px 12px;border-radius:999px;
+  background:var(--surface);border:1px solid var(--line);
+}
+.totalpill .amt{font-family:"Instrument Serif",Georgia,serif;font-size:18px}
+.totalpill .lbl{font-size:11.5px;color:var(--muted)}
+.chev{color:var(--muted);font-size:13px;margin-left:1px}
+
+/* ---------- amount stage ---------- */
+.stage{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:4px 16px 8px}
+.amountline{display:flex;align-items:baseline;justify-content:center;gap:4px;min-height:64px}
+.rupee{font-family:"Instrument Serif",Georgia,serif;font-size:30px;color:var(--muted);line-height:1}
+.amount{font-family:"Instrument Serif",Georgia,serif;font-size:clamp(46px,17vw,68px);line-height:1;letter-spacing:-.01em}
+.amount.empty{color:var(--muted);opacity:.45}
+
+.cats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.cat{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:9px 2px 8px;border-radius:12px;background:var(--surface);
+  border:1px solid var(--line);font-size:11.5px;color:var(--muted);
+  transition:background .12s ease,color .12s ease,border-color .12s ease;
+}
+.cat .dot{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.cat[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:#fff;font-weight:500}
+.cat[aria-pressed="true"] .dot{background:rgba(255,255,255,.85)}
+
+.pays{display:flex;gap:4px;padding:3px;background:var(--sunken);border-radius:11px}
+.pay{flex:1;padding:8px 0;border-radius:8px;font-size:13px;color:var(--muted);text-align:center}
+.pay[aria-pressed="true"]{background:var(--surface);color:var(--fg);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+
+.noterow{display:flex;justify-content:center;min-height:30px;align-items:center}
+.notebtn{font-size:12.5px;color:var(--muted);padding:4px 10px}
+.noteinput{
+  width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface);color:var(--fg);font:inherit;font-size:14px;
+}
+.noteinput::placeholder{color:var(--muted)}
+
+/* ---------- keypad ---------- */
+.pad{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.key{
+  padding:14px 0;border-radius:var(--r);background:var(--key);border:1px solid var(--line);
+  font-family:"Instrument Serif",Georgia,serif;font-size:26px;line-height:1.1;text-align:center;
+}
+.key:active{background:var(--key-press)}
+.key.util{font-family:Archivo,sans-serif;font-size:17px;color:var(--muted)}
+.add{
+  padding:16px;border-radius:var(--r);background:var(--brass);color:var(--brass-ink);
+  font-size:16px;font-weight:600;text-align:center;letter-spacing:.01em;
+}
+.add:disabled{opacity:.32;cursor:default}
+.add .a{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:18px}
+
+/* ---------- breakdown ---------- */
+.scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 28px}
+.monthnav{display:flex;align-items:center;gap:8px;padding:12px 16px 4px}
+.iconbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--muted)}
+.iconbtn:disabled{opacity:.3;cursor:default}
+.monthname{font-family:"Instrument Serif",Georgia,serif;font-size:20px;flex:1;text-align:center}
+
+.bigtotal{padding:14px 0 18px;border-bottom:1px solid var(--line)}
+.bigtotal .v{font-family:"Instrument Serif",Georgia,serif;font-size:42px;line-height:1.05}
+.bigtotal .k{font-size:12.5px;color:var(--muted);margin-top:3px}
+
+.sec{padding:18px 0 4px}
+.sec h2{font-size:12.5px;font-weight:500;color:var(--muted);margin:0 0 12px}
+
+.brow{display:grid;grid-template-columns:1fr auto;gap:3px 10px;margin-bottom:13px}
+.brow .n{font-size:14px}
+.brow .v{font-family:"Instrument Serif",Georgia,serif;font-size:16px;text-align:right}
+.bar{grid-column:1/-1;height:7px;border-radius:4px;background:var(--sunken);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--c)}
+.brow .p{font-size:11.5px;color:var(--muted);text-align:right;grid-column:2}
+
+.split{display:flex;height:11px;border-radius:6px;overflow:hidden;background:var(--sunken);margin-bottom:12px}
+.split i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px}
+.legend div{display:flex;align-items:baseline;gap:6px;font-size:12.5px;color:var(--muted)}
+.legend b{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:15px;color:var(--fg)}
+.sw{width:9px;height:9px;border-radius:3px;align-self:center}
+
+.daylbl{font-size:12px;color:var(--muted);padding:16px 0 7px;position:sticky;top:0;background:var(--bg)}
+.entry{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--line)}
+.entry .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+.entry .main{flex:1;min-width:0}
+.entry .t{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .s{font-size:11.5px;color:var(--muted)}
+.entry .v{font-family:"Instrument Serif",Georgia,serif;font-size:17px}
+.del{font-size:12px;color:var(--muted);padding:5px 8px;border-radius:8px;border:1px solid transparent}
+.del.armed{color:var(--c-shop);border-color:var(--c-shop)}
+
+.empty{text-align:center;color:var(--muted);font-size:14px;padding:44px 20px}
+.empty .big{font-family:"Instrument Serif",Georgia,serif;font-size:22px;color:var(--fg);display:block;margin-bottom:6px}
+
+.foot{display:flex;gap:9px;padding:22px 0 0;border-top:1px solid var(--line);margin-top:20px}
+.ghost{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:13.5px;text-align:center}
+
+.note-banner{font-size:11.5px;color:var(--muted);text-align:center;padding:0 16px 8px}
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(22px + env(safe-area-inset-bottom,0px));
+  background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;
+  font-size:13px;z-index:40;opacity:0;pointer-events:none;transition:opacity .18s ease;
+}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== LOG ===== -->
+  <section class="view" id="v-log">
+    <div class="top">
+      <span class="wordmark">Chillara</span>
+      <span class="spacer"></span>
+      <button class="totalpill" id="go-breakdown">
+        <span class="amt" id="pill-amt">₹0</span>
+        <span class="lbl" id="pill-lbl">this month</span>
+        <span class="chev">›</span>
+      </button>
+    </div>
+
+    <div class="stage">
+      <div class="amountline">
+        <span class="rupee">₹</span>
+        <span class="amount empty num" id="amount">0</span>
+      </div>
+      <div class="cats" id="cats"></div>
+      <div class="pays" id="pays"></div>
+      <div class="noterow" id="noterow"></div>
+    </div>
+
+    <div class="pad">
+      <div class="keys" id="keys"></div>
+      <button class="add" id="add" disabled>Add</button>
+    </div>
+    <p class="note-banner hidden" id="banner"></p>
+  </section>
+
+  <!-- ===== BREAKDOWN ===== -->
+  <section class="view hidden" id="v-break">
+    <div class="monthnav">
+      <button class="iconbtn" id="back" aria-label="Back to keypad">‹</button>
+      <span class="spacer"></span>
+      <button class="iconbtn" id="prev-m" aria-label="Previous month">‹</button>
+      <span class="monthname" id="monthname">—</span>
+      <button class="iconbtn" id="next-m" aria-label="Next month">›</button>
+      <span class="spacer"></span>
+    </div>
+    <div class="scroll" id="breakdown"></div>
+  </section>
+
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- config ---------------- */
+var CATS = [
+  {id:"food",    label:"Food",     v:"--c-food"},
+  {id:"travel",  label:"Travel",   v:"--c-travel"},
+  {id:"grocery", label:"Grocery",  v:"--c-grocery"},
+  {id:"bills",   label:"Bills",    v:"--c-bills"},
+  {id:"shop",    label:"Shopping", v:"--c-shop"},
+  {id:"health",  label:"Health",   v:"--c-health"},
+  {id:"fun",     label:"Fun",      v:"--c-fun"},
+  {id:"other",   label:"Other",    v:"--c-other"}
+];
+var CATMAP = {}; CATS.forEach(function(c){ CATMAP[c.id]=c; });
+var PAYS = [{id:"upi",label:"UPI"},{id:"cash",label:"Cash"},{id:"card",label:"Card"}];
+var PAYMAP = {upi:"UPI",cash:"Cash",card:"Card"};
+var LS = "chillara:";
+
+/* ---------------- helpers ---------------- */
+var inr = new Intl.NumberFormat("en-IN",{maximumFractionDigits:2});
+function money(n){ return "₹" + inr.format(Math.round(n*100)/100); }
+function monthKey(d){ d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+function monthLabel(k){
+  var p=k.split("-"), d=new Date(+p[0], +p[1]-1, 1);
+  return d.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+}
+function shiftMonth(k,by){
+  var p=k.split("-"), d=new Date(+p[0], +p[1]-1+by, 1);
+  return monthKey(d);
+}
+function dayKey(ts){ var d=new Date(ts); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function dayLabel(ts){
+  var d=new Date(ts), now=new Date();
+  var a=dayKey(ts), b=dayKey(now.getTime()), c=dayKey(now.getTime()-86400000);
+  if(a===b) return "Today";
+  if(a===c) return "Yesterday";
+  return d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});
+}
+function timeLabel(ts){ return new Date(ts).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }
+function cvar(id){ return "var(" + (CATMAP[id]||CATMAP.other).v + ")"; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function el(id){ return document.getElementById(id); }
+
+function lsGet(k,fb){ try{ var r=localStorage.getItem(LS+k); return r==null?fb:JSON.parse(r); }catch(e){ return fb; } }
+function lsSet(k,v){ try{ localStorage.setItem(LS+k, JSON.stringify(v)); }catch(e){} }
+function lsMonths(){
+  var out=[];
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k && k.indexOf(LS+"m:")===0) out.push(k.slice((LS+"m:").length));
+    }
+  }catch(e){}
+  return out;
+}
+
+var toastT=null;
+function toast(msg){
+  var t=el("toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(toastT); toastT=setTimeout(function(){ t.classList.remove("on"); }, 2200);
+}
+
+/* ---------------- state ---------------- */
+var S = {
+  view:"log",
+  month:monthKey(),
+  viewMonth:monthKey(),
+  items:[],                       // entries for S.viewMonth
+  thisMonthTotal:0,
+  amount:"",
+  cat: lsGet("lastCat","food"),
+  pay: lsGet("lastPay","upi"),
+  noteOpen:false,
+  note:"",
+  armed:null
+};
+if(!CATMAP[S.cat]) S.cat="food";
+if(!PAYMAP[S.pay]) S.pay="upi";
+
+var db=null, downloads=null, unsub=null, ready=false;
+
+/* ---------------- storage layer ---------------- */
+function localRead(m){ var v=lsGet("m:"+m,null); return Array.isArray(v)?v:[]; }
+function localWrite(m,items){ lsSet("m:"+m, items); }
+
+var writeChain = Promise.resolve();
+function persist(m, items){
+  localWrite(m, items);
+  if(!db) return Promise.resolve();
+  var snapshot = items.slice();
+  writeChain = writeChain.then(function(){
+    return db.doc("months/"+m).set({ items: snapshot, updated: Date.now() });
+  }).catch(function(e){
+    var code = e && e.code;
+    if(code==="quota_exceeded") toast("Storage is full — export and remove old months.");
+    else if(code==="revoked" || code==="not_granted") toast("Saved on this device only.");
+    else toast("Couldn't sync that one — it's saved on this device.");
+  });
+  return writeChain;
+}
+
+function subscribe(m){
+  if(unsub){ unsub(); unsub=null; }
+  if(!db){ S.items = localRead(m); render(); refreshMonthTotal(); return; }
+  unsub = db.doc("months/"+m).onSnapshot(function(snap){
+    var d = snap.exists ? snap.data() : null;
+    var arr = (d && Array.isArray(d.items)) ? d.items.slice() : [];
+    arr.sort(function(a,b){ return b.ts-a.ts; });
+    S.items = arr;
+    localWrite(m, arr);
+    if(m===S.month) S.thisMonthTotal = sum(arr);
+    render();
+  }, function(err){
+    toast("Live sync stopped. Your entries are safe on this device.");
+    S.items = localRead(m); render();
+  });
+}
+
+function refreshMonthTotal(){
+  if(S.viewMonth===S.month){ S.thisMonthTotal = sum(S.items); }
+  else { S.thisMonthTotal = sum(localRead(S.month)); }
+  renderPill();
+}
+function sum(a){ return a.reduce(function(t,i){ return t + (+i.amt||0); },0); }
+
+/* ---------------- boot ---------------- */
+S.items = localRead(S.month);
+S.items.sort(function(a,b){ return b.ts-a.ts; });
+S.thisMonthTotal = sum(S.items);
+
+buildStaticUI();
+render();
+
+(async function init(){
+  try{ db = await window.claude.use("db"); }catch(e){ db=null; }
+  try{ downloads = await window.claude.use("downloads"); }catch(e){ downloads=null; }
+
+  if(!db){
+    el("banner").textContent = "Saving on this device. Export a CSV now and then as backup.";
+    el("banner").classList.remove("hidden");
+    ready=true; render();
+    return;
+  }
+
+  // one-time lift of anything typed before the store answered
+  if(!lsGet("migrated",false)){
+    var months = lsMonths();
+    for(var i=0;i<months.length;i++){
+      var m=months[i], local=localRead(m);
+      if(!local.length) continue;
+      try{
+        var snap = await db.doc("months/"+m).get();
+        var remote = (snap.exists && Array.isArray(snap.data().items)) ? snap.data().items : [];
+        var seen={}; remote.forEach(function(r){ seen[r.id]=1; });
+        var add = local.filter(function(l){ return !seen[l.id]; });
+        if(add.length){
+          var merged = remote.concat(add);
+          merged.sort(function(a,b){ return b.ts-a.ts; });
+          await db.doc("months/"+m).set({ items: merged, updated: Date.now() });
+        }
+      }catch(e){}
+    }
+    lsSet("migrated",true);
+  }
+
+  ready=true;
+  subscribe(S.viewMonth);
+  render();
+})();
+
+/* ---------------- static UI ---------------- */
+function buildStaticUI(){
+  var cats = el("cats");
+  CATS.forEach(function(c){
+    var b=document.createElement("button");
+    b.className="cat"; b.type="button"; b.style.setProperty("--c","var("+c.v+")");
+    b.setAttribute("aria-pressed", String(S.cat===c.id));
+    b.innerHTML='<span class="dot"></span><span>'+c.label+'</span>';
+    b.addEventListener("click", function(){ S.cat=c.id; lsSet("lastCat",c.id); renderCats(); });
+    cats.appendChild(b);
+    c._node=b;
+  });
+
+  var pays = el("pays");
+  PAYS.forEach(function(p){
+    var b=document.createElement("button");
+    b.className="pay"; b.type="button"; b.textContent=p.label;
+    b.setAttribute("aria-pressed", String(S.pay===p.id));
+    b.addEventListener("click", function(){ S.pay=p.id; lsSet("lastPay",p.id); renderPays(); });
+    pays.appendChild(b); p._node=b;
+  });
+
+  var keys=el("keys");
+  ["1","2","3","4","5","6","7","8","9",".","0","⌫"].forEach(function(k){
+    var b=document.createElement("button");
+    b.type="button";
+    b.className = (k==="⌫") ? "key util" : "key";
+    b.textContent=k;
+    if(k==="⌫") b.setAttribute("aria-label","Delete last digit");
+    b.addEventListener("click", function(){ press(k); });
+    keys.appendChild(b);
+  });
+
+  el("add").addEventListener("click", commit);
+  el("go-breakdown").addEventListener("click", function(){ go("break"); });
+  el("back").addEventListener("click", function(){ go("log"); });
+  el("prev-m").addEventListener("click", function(){ setViewMonth(shiftMonth(S.viewMonth,-1)); });
+  el("next-m").addEventListener("click", function(){ setViewMonth(shiftMonth(S.viewMonth, 1)); });
+
+  document.addEventListener("keydown", function(e){
+    if(S.view!=="log") return;
+    if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if(/^[0-9]$/.test(e.key)) { press(e.key); e.preventDefault(); }
+    else if(e.key===".") { press("."); e.preventDefault(); }
+    else if(e.key==="Backspace"){ press("⌫"); e.preventDefault(); }
+    else if(e.key==="Enter"){ commit(); e.preventDefault(); }
+  });
+}
+
+/* ---------------- keypad ---------------- */
+function press(k){
+  if(k==="⌫"){ S.amount = S.amount.slice(0,-1); }
+  else if(k==="."){ if(S.amount.indexOf(".")<0) S.amount = (S.amount||"0") + "."; }
+  else {
+    if(S.amount==="0") S.amount="";
+    var dec = S.amount.split(".")[1];
+    if(dec && dec.length>=2) return;
+    if(S.amount.replace(".","").length>=8) return;
+    S.amount += k;
+  }
+  renderAmount();
+}
+
+function value(){ var n=parseFloat(S.amount); return isFinite(n)?n:0; }
+
+async function commit(){
+  var n = value();
+  if(n<=0) return;
+  var entry = { id:uid(), ts:Date.now(), amt:Math.round(n*100)/100, cat:S.cat, pay:S.pay };
+  if(S.note.trim()) entry.note = S.note.trim().slice(0,120);
+
+  var m = monthKey(new Date(entry.ts));
+  S.month = m;
+  var list = (m===S.viewMonth) ? S.items.slice() : localRead(m);
+  list.unshift(entry);
+  list.sort(function(a,b){ return b.ts-a.ts; });
+
+  if(m===S.viewMonth) S.items = list;
+  S.thisMonthTotal = sum(m===S.viewMonth ? list : localRead(m).concat([entry]));
+
+  S.amount=""; S.note=""; S.noteOpen=false; S.armed=null;
+  render();
+  toast(money(entry.amt) + " · " + CATMAP[entry.cat].label);
+  persist(m, list);
+  if(m!==S.viewMonth) setViewMonth(m);
+}
+
+async function remove(id){
+  var list = S.items.filter(function(i){ return i.id!==id; });
+  S.items = list; S.armed=null;
+  if(S.viewMonth===S.month) S.thisMonthTotal = sum(list);
+  render();
+  persist(S.viewMonth, list);
+}
+
+/* ---------------- navigation ---------------- */
+function go(v){
+  S.view=v; S.armed=null;
+  el("v-log").classList.toggle("hidden", v!=="log");
+  el("v-break").classList.toggle("hidden", v!=="break");
+  if(v==="break"){ el("breakdown").scrollTop=0; }
+  render();
+}
+function setViewMonth(m){
+  if(m > monthKey()) return;
+  S.viewMonth=m; S.armed=null;
+  if(db && ready) subscribe(m);
+  else { S.items = localRead(m); S.items.sort(function(a,b){return b.ts-a.ts;}); }
+  refreshMonthTotal();
+  render();
+}
+
+/* ---------------- render ---------------- */
+function render(){
+  renderAmount(); renderCats(); renderPays(); renderNote(); renderPill();
+  if(S.view==="break") renderBreakdown();
+}
+function renderAmount(){
+  var a=el("amount"), n=value();
+  a.textContent = S.amount==="" ? "0" : (S.amount.indexOf(".")>=0 ? S.amount : inr.format(parseInt(S.amount,10)||0));
+  a.classList.toggle("empty", S.amount==="");
+  var btn=el("add");
+  btn.disabled = !(n>0);
+  btn.innerHTML = n>0 ? ('Add <span class="a">'+money(n)+'</span>') : "Add";
+}
+function renderCats(){ CATS.forEach(function(c){ c._node.setAttribute("aria-pressed", String(S.cat===c.id)); }); }
+function renderPays(){ PAYS.forEach(function(p){ p._node.setAttribute("aria-pressed", String(S.pay===p.id)); }); }
+function renderNote(){
+  var row=el("noterow"); row.innerHTML="";
+  if(!S.noteOpen){
+    var b=document.createElement("button");
+    b.className="notebtn"; b.type="button";
+    b.textContent = S.note ? "“"+S.note+"”" : "Add a note";
+    b.addEventListener("click", function(){ S.noteOpen=true; renderNote(); });
+    row.appendChild(b);
+  } else {
+    var i=document.createElement("input");
+    i.className="noteinput"; i.type="text"; i.placeholder="What was it for?";
+    i.value=S.note; i.maxLength=120;
+    i.addEventListener("input", function(){ S.note=i.value; });
+    i.addEventListener("blur", function(){ S.noteOpen=false; renderNote(); });
+    i.addEventListener("keydown", function(e){ if(e.key==="Enter"){ i.blur(); } });
+    row.appendChild(i); i.focus();
+  }
+}
+function renderPill(){
+  el("pill-amt").textContent = money(S.thisMonthTotal);
+  el("pill-lbl").textContent = "this month";
+}
+
+function renderBreakdown(){
+  el("monthname").textContent = monthLabel(S.viewMonth);
+  el("next-m").disabled = (S.viewMonth >= monthKey());
+
+  var root=el("breakdown"); root.innerHTML="";
+  var items=S.items, total=sum(items);
+
+  var head=document.createElement("div");
+  head.className="bigtotal";
+  head.innerHTML='<div class="v num">'+money(total)+'</div><div class="k">'+
+    (items.length ? items.length+" "+(items.length===1?"entry":"entries") : "nothing logged yet")+'</div>';
+  root.appendChild(head);
+
+  if(!items.length){
+    var e=document.createElement("div");
+    e.className="empty";
+    e.innerHTML='<span class="big">Nothing here yet</span>Tap the arrow up top and log your first spend — even a ₹10 one.';
+    root.appendChild(e);
+    root.appendChild(footer());
+    return;
+  }
+
+  /* by category */
+  var byCat={};
+  items.forEach(function(i){ byCat[i.cat]=(byCat[i.cat]||0)+ (+i.amt||0); });
+  var rows=Object.keys(byCat).map(function(k){ return {k:k,v:byCat[k]}; })
+                 .sort(function(a,b){ return b.v-a.v; });
+  var max=rows[0].v;
+
+  var s1=document.createElement("section"); s1.className="sec";
+  s1.innerHTML='<h2>Where it went</h2>';
+  rows.forEach(function(r){
+    var c=CATMAP[r.k]||CATMAP.other;
+    var d=document.createElement("div");
+    d.className="brow"; d.style.setProperty("--c","var("+c.v+")");
+    d.innerHTML =
+      '<div class="n">'+c.label+'</div>'+
+      '<div class="v num">'+money(r.v)+'</div>'+
+      '<div class="bar"><i style="width:'+Math.max(3,(r.v/max*100))+'%"></i></div>'+
+      '<div class="p">'+Math.round(r.v/total*100)+'%</div>';
+    s1.appendChild(d);
+  });
+  root.appendChild(s1);
+
+  /* by payment */
+  var byPay={upi:0,cash:0,card:0};
+  items.forEach(function(i){ if(byPay[i.pay]!=null) byPay[i.pay]+= (+i.amt||0); else byPay.card+=(+i.amt||0); });
+  var payCols={upi:"var(--c-travel)",cash:"var(--c-grocery)",card:"var(--c-bills)"};
+  var s2=document.createElement("section"); s2.className="sec";
+  s2.innerHTML='<h2>How you paid</h2>';
+  var bar=document.createElement("div"); bar.className="split";
+  var leg=document.createElement("div"); leg.className="legend";
+  ["upi","cash","card"].forEach(function(p){
+    var v=byPay[p]; if(v>0){
+      var i=document.createElement("i"); i.style.width=(v/total*100)+"%"; i.style.background=payCols[p]; bar.appendChild(i);
+    }
+    var d=document.createElement("div");
+    d.innerHTML='<span class="sw" style="background:'+payCols[p]+'"></span>'+PAYMAP[p]+' <b class="num">'+money(v)+'</b>';
+    leg.appendChild(d);
+  });
+  s2.appendChild(bar); s2.appendChild(leg);
+  root.appendChild(s2);
+
+  /* entries */
+  var s3=document.createElement("section"); s3.className="sec";
+  s3.innerHTML='<h2>Every entry</h2>';
+  var lastDay=null;
+  items.forEach(function(it){
+    var dk=dayKey(it.ts);
+    if(dk!==lastDay){
+      lastDay=dk;
+      var dayTotal=items.filter(function(x){return dayKey(x.ts)===dk;}).reduce(function(t,x){return t+(+x.amt||0);},0);
+      var h=document.createElement("div"); h.className="daylbl";
+      h.textContent = dayLabel(it.ts) + " · " + money(dayTotal);
+      s3.appendChild(h);
+    }
+    var c=CATMAP[it.cat]||CATMAP.other;
+    var row=document.createElement("div");
+    row.className="entry"; row.style.setProperty("--c","var("+c.v+")");
+    var sub = timeLabel(it.ts) + " · " + (PAYMAP[it.pay]||"Card");
+    row.innerHTML =
+      '<span class="dot"></span>'+
+      '<span class="main"><span class="t">'+ (it.note ? escapeHtml(it.note) : c.label) +'</span>'+
+      '<span class="s">'+ (it.note ? c.label+" · "+sub : sub) +'</span></span>'+
+      '<span class="v num">'+money(it.amt)+'</span>';
+    var b=document.createElement("button");
+    b.className="del" + (S.armed===it.id ? " armed":"");
+    b.type="button";
+    b.textContent = S.armed===it.id ? "Delete?" : "×";
+    b.setAttribute("aria-label","Delete this entry");
+    b.addEventListener("click", function(){
+      if(S.armed===it.id){ remove(it.id); }
+      else { S.armed=it.id; renderBreakdown(); setTimeout(function(){ if(S.armed===it.id){ S.armed=null; if(S.view==="break") renderBreakdown(); } },3000); }
+    });
+    row.appendChild(b);
+    s3.appendChild(row);
+  });
+  root.appendChild(s3);
+  root.appendChild(footer());
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+function footer(){
+  var f=document.createElement("div"); f.className="foot";
+  var b1=document.createElement("button"); b1.className="ghost"; b1.type="button";
+  b1.textContent="Export "+monthLabel(S.viewMonth).split(" ")[0]+" as CSV";
+  b1.addEventListener("click", function(){ exportCsv(false); });
+  var b2=document.createElement("button"); b2.className="ghost"; b2.type="button";
+  b2.textContent="Export everything";
+  b2.addEventListener("click", function(){ exportCsv(true); });
+  f.appendChild(b1); f.appendChild(b2);
+  return f;
+}
+
+/* ---------------- export ---------------- */
+async function collect(all){
+  if(!all) return [{m:S.viewMonth, items:S.items}];
+  var out=[], seen={};
+  if(db){
+    try{
+      var qs = await db.collection("months").get();
+      qs.docs.forEach(function(d){
+        var data=d.data()||{};
+        out.push({m:d.id, items:Array.isArray(data.items)?data.items:[]});
+        seen[d.id]=1;
+      });
+    }catch(e){}
+  }
+  lsMonths().forEach(function(m){ if(!seen[m]) out.push({m:m, items:localRead(m)}); });
+  out.sort(function(a,b){ return a.m<b.m?-1:1; });
+  return out;
+}
+
+function csvCell(s){ s=String(s==null?"":s); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+
+async function exportCsv(all){
+  var groups = await collect(all);
+  var lines = ["Date,Time,Amount,Category,Payment,Note"];
+  var n=0;
+  groups.forEach(function(g){
+    g.items.slice().sort(function(a,b){ return a.ts-b.ts; }).forEach(function(i){
+      var d=new Date(i.ts);
+      lines.push([
+        d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),
+        String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"),
+        (+i.amt||0).toFixed(2),
+        csvCell((CATMAP[i.cat]||CATMAP.other).label),
+        csvCell(PAYMAP[i.pay]||"Card"),
+        csvCell(i.note||"")
+      ].join(","));
+      n++;
+    });
+  });
+  if(!n){ toast("Nothing to export yet."); return; }
+  var text = lines.join("\n");
+  var name = all ? "chillara-all.csv" : "chillara-"+S.viewMonth+".csv";
+
+  if(downloads){
+    try{
+      await downloads.save({ filename:name, data:text });
+      toast(n+" entries exported.");
+      return;
+    }catch(e){
+      if(e && e.code==="declined") return;
+    }
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    toast("CSV copied — paste it into a sheet.");
+  }catch(e){
+    toast("Export isn't available here.");
+  }
+}
+
+})();
+</script>
+</body>
+</html>

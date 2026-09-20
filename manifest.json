@@ -1,0 +1,13 @@
+{
+  "name": "Chillara",
+  "short_name": "Chillara",
+  "description": "A fast, daily expense tracker with category and payment breakdowns.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#F2F0E9",
+  "theme_color": "#8A6A22",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

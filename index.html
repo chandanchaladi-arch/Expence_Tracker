@@ -155,7 +155,8 @@ button{font:inherit;color:inherit;background:none;border:0;margin:0;cursor:point
 .sw{width:9px;height:9px;border-radius:3px;align-self:center}
 
 .daylbl{font-size:12px;color:var(--muted);padding:16px 0 7px;position:sticky;top:0;background:var(--bg)}
-.entry{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--line)}
+.entry{display:flex;align-items:center;gap:11px;padding:9px 6px;margin:0 -6px;border-top:1px solid var(--line);border-radius:8px;cursor:pointer}
+.entry:hover{background:var(--sunken)}
 .entry .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
 .entry .main{flex:1;min-width:0}
 .entry .t{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -163,6 +164,12 @@ button{font:inherit;color:inherit;background:none;border:0;margin:0;cursor:point
 .entry .v{font-family:"Instrument Serif",Georgia,serif;font-size:17px}
 .del{font-size:12px;color:var(--muted);padding:5px 8px;border-radius:8px;border:1px solid transparent}
 .del.armed{color:var(--c-shop);border-color:var(--c-shop)}
+
+.entry-editor{margin:2px -6px 10px;padding:12px;border-radius:12px;background:var(--sunken);display:flex;flex-direction:column;gap:10px}
+.editor-cats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.editor-actions{display:flex;gap:8px}
+.editor-save{flex:1;padding:9px 0;border-radius:9px;background:var(--brass);color:var(--brass-ink);font-size:13.5px;font-weight:600;text-align:center}
+.editor-cancel{flex:1;padding:9px 0;border-radius:9px;background:var(--surface);border:1px solid var(--line);font-size:13.5px;text-align:center;color:var(--muted)}
 
 .empty{text-align:center;color:var(--muted);font-size:14px;padding:44px 20px}
 .empty .big{font-family:"Instrument Serif",Georgia,serif;font-size:22px;color:var(--fg);display:block;margin-bottom:6px}
@@ -305,7 +312,8 @@ var S = {
   pay: lsGet("lastPay","upi"),
   noteOpen:false,
   note:"",
-  armed:null
+  armed:null,
+  editingEntry:null
 };
 if(!CATMAP[S.cat]) S.cat="food";
 if(!PAYMAP[S.pay]) S.pay="upi";
@@ -498,7 +506,7 @@ async function remove(id){
 
 /* ---------------- navigation ---------------- */
 function go(v){
-  S.view=v; S.armed=null;
+  S.view=v; S.armed=null; S.editingEntry=null;
   el("v-log").classList.toggle("hidden", v!=="log");
   el("v-break").classList.toggle("hidden", v!=="break");
   if(v==="break"){ el("breakdown").scrollTop=0; }
@@ -506,7 +514,7 @@ function go(v){
 }
 function setViewMonth(m){
   if(m > monthKey()) return;
-  S.viewMonth=m; S.armed=null;
+  S.viewMonth=m; S.armed=null; S.editingEntry=null;
   if(db && ready) subscribe(m);
   else { S.items = localRead(m); S.items.sort(function(a,b){return b.ts-a.ts;}); }
   refreshMonthTotal();
@@ -641,15 +649,90 @@ function renderBreakdown(){
     b.type="button";
     b.textContent = S.armed===it.id ? "Delete?" : "×";
     b.setAttribute("aria-label","Delete this entry");
-    b.addEventListener("click", function(){
+    b.addEventListener("click", function(ev){
+      ev.stopPropagation();
       if(S.armed===it.id){ remove(it.id); }
       else { S.armed=it.id; renderBreakdown(); setTimeout(function(){ if(S.armed===it.id){ S.armed=null; if(S.view==="break") renderBreakdown(); } },3000); }
     });
     row.appendChild(b);
+    row.setAttribute("role","button");
+    row.setAttribute("aria-label","Change category and payment for this entry");
+    row.addEventListener("click", function(ev){
+      if(ev.target.closest(".del")) return;
+      S.armed=null;
+      S.editingEntry = (S.editingEntry===it.id) ? null : it.id;
+      renderBreakdown();
+    });
     s3.appendChild(row);
+    if(S.editingEntry===it.id) s3.appendChild(renderEntryEditor(it));
   });
   root.appendChild(s3);
   root.appendChild(footer());
+}
+
+function renderEntryEditor(it){
+  var wrap=document.createElement("div");
+  wrap.className="entry-editor";
+
+  var catRow=document.createElement("div");
+  catRow.className="editor-cats";
+  var chosenCat=it.cat;
+  CATS.forEach(function(c){
+    var cb=document.createElement("button");
+    cb.type="button"; cb.className="cat"; cb.style.setProperty("--c","var("+c.v+")");
+    cb.setAttribute("aria-pressed", String(chosenCat===c.id));
+    cb.innerHTML='<span class="dot"></span><span>'+c.label+'</span>';
+    cb.addEventListener("click", function(){
+      chosenCat=c.id;
+      Array.prototype.forEach.call(catRow.children, function(n){ n.setAttribute("aria-pressed", String(n===cb)); });
+    });
+    catRow.appendChild(cb);
+  });
+
+  var payRow=document.createElement("div");
+  payRow.className="pays";
+  var chosenPay = PAYMAP[it.pay] ? it.pay : "card";
+  PAYS.forEach(function(p){
+    var pb=document.createElement("button");
+    pb.type="button"; pb.className="pay"; pb.textContent=p.label;
+    pb.setAttribute("aria-pressed", String(chosenPay===p.id));
+    pb.addEventListener("click", function(){
+      chosenPay=p.id;
+      Array.prototype.forEach.call(payRow.children, function(n){ n.setAttribute("aria-pressed", String(n===pb)); });
+    });
+    payRow.appendChild(pb);
+  });
+
+  var actions=document.createElement("div");
+  actions.className="editor-actions";
+  var saveBtn=document.createElement("button");
+  saveBtn.type="button"; saveBtn.className="editor-save"; saveBtn.textContent="Save changes";
+  saveBtn.addEventListener("click", function(){ saveEntryEdit(it.id, chosenCat, chosenPay); });
+  var cancelBtn=document.createElement("button");
+  cancelBtn.type="button"; cancelBtn.className="editor-cancel"; cancelBtn.textContent="Cancel";
+  cancelBtn.addEventListener("click", function(){ S.editingEntry=null; renderBreakdown(); });
+  actions.appendChild(saveBtn); actions.appendChild(cancelBtn);
+
+  wrap.appendChild(catRow);
+  wrap.appendChild(payRow);
+  wrap.appendChild(actions);
+  return wrap;
+}
+
+function saveEntryEdit(id, cat, pay){
+  var idx=-1;
+  for(var i=0;i<S.items.length;i++){ if(S.items[i].id===id){ idx=i; break; } }
+  if(idx<0){ S.editingEntry=null; renderBreakdown(); return; }
+  var updated={};
+  for(var k in S.items[idx]) updated[k]=S.items[idx][k];
+  updated.cat=cat; updated.pay=pay;
+  var list=S.items.slice();
+  list[idx]=updated;
+  S.items=list;
+  S.editingEntry=null;
+  if(S.viewMonth===S.month) S.thisMonthTotal=sum(list);
+  render();
+  persist(S.viewMonth, list);
 }
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }

@@ -46,3 +46,13 @@ Entries are saved in your browser's local storage under keys prefixed
 - `index.html` — the entire app (markup, styles, and logic).
 - `manifest.json` — web app manifest for "Add to Home Screen".
 - `icon.svg` — app icon used by the manifest.
+
+## Deploy with Netlify
+
+The repo includes a `netlify.toml` (static site, no build step, publishes the root folder).
+
+1. Sign in at [app.netlify.com](https://app.netlify.com) and choose **Add new site → Import an existing project**.
+2. Pick **GitHub** and select this repository.
+3. Leave the build command empty and the publish directory as `.` (already set by `netlify.toml`), then **Deploy**.
+
+Netlify gives you a URL like `https://<site-name>.netlify.app` and redeploys on every push. For a quick one-off without Git, you can also drag this folder onto [app.netlify.com/drop](https://app.netlify.com/drop).

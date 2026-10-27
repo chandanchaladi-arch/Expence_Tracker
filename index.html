@@ -143,12 +143,17 @@ button{font:inherit;color:inherit;background:none;border:0;margin:0;cursor:point
 .sec{padding:18px 0 4px}
 .sec h2{font-size:12.5px;font-weight:500;color:var(--muted);margin:0 0 12px}
 
-.brow{display:grid;grid-template-columns:1fr auto;gap:3px 10px;margin-bottom:13px}
+.brow{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:3px 10px;margin:0 -6px 13px;padding:4px 6px;border-radius:10px;cursor:pointer}
+.brow:hover{background:var(--sunken)}
+.brow.active{background:var(--sunken)}
+.brow-check{width:16px;height:16px;accent-color:var(--brass);flex:none}
 .brow .n{font-size:14px}
 .brow .v{font-family:"Instrument Serif",Georgia,serif;font-size:16px;text-align:right}
 .bar{grid-column:1/-1;height:7px;border-radius:4px;background:var(--sunken);overflow:hidden}
 .bar i{display:block;height:100%;border-radius:4px;background:var(--c)}
-.brow .p{font-size:11.5px;color:var(--muted);text-align:right;grid-column:2}
+.brow .p{font-size:11.5px;color:var(--muted);text-align:right;grid-column:3}
+
+.filter-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--brass);background:var(--surface);border:1px solid var(--brass);border-radius:999px;padding:4px 10px;margin-bottom:12px;cursor:pointer}
 
 .split{display:flex;height:11px;border-radius:6px;overflow:hidden;background:var(--sunken);margin-bottom:12px}
 .split i{display:block;height:100%}
@@ -318,7 +323,8 @@ var S = {
   noteOpen:false,
   note:"",
   armed:null,
-  editingEntry:null
+  editingEntry:null,
+  catFilter:[]
 };
 if(!CATMAP[S.cat]) S.cat="food";
 if(!PAYMAP[S.pay]) S.pay="upi";
@@ -539,7 +545,7 @@ function go(v){
 }
 function setViewMonth(m){
   if(m > monthKey()) return;
-  S.viewMonth=m; S.armed=null; S.editingEntry=null;
+  S.viewMonth=m; S.armed=null; S.editingEntry=null; S.catFilter=[];
   if(db && ready) subscribe(m);
   else { S.items = localRead(m); S.items.sort(function(a,b){return b.ts-a.ts;}); }
   refreshMonthTotal();
@@ -590,6 +596,12 @@ function renderPill(){
   el("pill-lbl").textContent = "this month";
 }
 
+function toggleCatFilter(catId){
+  var idx = S.catFilter.indexOf(catId);
+  if(idx>=0) S.catFilter.splice(idx,1); else S.catFilter.push(catId);
+  renderBreakdown();
+}
+
 function renderBreakdown(){
   el("monthname").textContent = monthLabel(S.viewMonth);
   el("next-m").disabled = (S.viewMonth >= monthKey());
@@ -623,13 +635,20 @@ function renderBreakdown(){
   s1.innerHTML='<h2>Where it went</h2>';
   rows.forEach(function(r){
     var c=CATMAP[r.k]||CATMAP.other;
+    var active = S.catFilter.indexOf(r.k)>=0;
     var d=document.createElement("div");
-    d.className="brow"; d.style.setProperty("--c","var("+c.v+")");
+    d.className="brow"+(active?" active":""); d.style.setProperty("--c","var("+c.v+")");
     d.innerHTML =
+      '<input type="checkbox" class="brow-check" aria-label="Filter entries to '+c.label+'"'+(active?" checked":"")+'>'+
       '<div class="n">'+c.label+'</div>'+
       '<div class="v num">'+money(r.v)+'</div>'+
       '<div class="bar"><i style="width:'+Math.max(3,(r.v/max*100))+'%"></i></div>'+
       '<div class="p">'+Math.round(r.v/total*100)+'%</div>';
+    d.addEventListener("click", function(ev){
+      if(ev.target.tagName==="INPUT") return;
+      toggleCatFilter(r.k);
+    });
+    d.querySelector(".brow-check").addEventListener("change", function(){ toggleCatFilter(r.k); });
     s1.appendChild(d);
   });
   root.appendChild(s1);
@@ -654,14 +673,33 @@ function renderBreakdown(){
   root.appendChild(s2);
 
   /* entries */
+  var filteredItems = S.catFilter.length ? items.filter(function(i){ return S.catFilter.indexOf(i.cat)>=0; }) : items;
+
   var s3=document.createElement("section"); s3.className="sec";
-  s3.innerHTML='<h2>Every entry</h2>';
+  var s3h=document.createElement("h2");
+  s3h.textContent = S.catFilter.length
+    ? "Every entry — " + S.catFilter.map(function(k){ return (CATMAP[k]||CATMAP.other).label; }).join(", ")
+    : "Every entry";
+  s3.appendChild(s3h);
+  if(S.catFilter.length){
+    var clearChip=document.createElement("div");
+    clearChip.className="filter-chip";
+    clearChip.textContent="Clear filter ×";
+    clearChip.addEventListener("click", function(){ S.catFilter=[]; renderBreakdown(); });
+    s3.appendChild(clearChip);
+  }
+  if(!filteredItems.length){
+    var fe=document.createElement("div");
+    fe.className="empty";
+    fe.textContent="No entries match this filter.";
+    s3.appendChild(fe);
+  }
   var lastDay=null;
-  items.forEach(function(it){
+  filteredItems.forEach(function(it){
     var dk=dayKey(it.ts);
     if(dk!==lastDay){
       lastDay=dk;
-      var dayTotal=items.filter(function(x){return dayKey(x.ts)===dk;}).reduce(function(t,x){return t+(+x.amt||0);},0);
+      var dayTotal=filteredItems.filter(function(x){return dayKey(x.ts)===dk;}).reduce(function(t,x){return t+(+x.amt||0);},0);
       var h=document.createElement("div"); h.className="daylbl";
       h.textContent = dayLabel(it.ts) + " · " + money(dayTotal);
       s3.appendChild(h);
